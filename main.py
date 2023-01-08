@@ -5,7 +5,7 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, cur
 
 app = Flask(__name__)
 
-app.config['SECRET_KEY'] = 'any-secret-key-you-choose'
+app.config['SECRET_KEY'] = 'shibasarecool'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -38,13 +38,16 @@ def home():
 @app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == "POST":
+        # Checks if user already exists
+        if User.query.filter_by(email=request.form.get('email')).first():
+            flash("You've already signed up with that email. Please login")
+            return redirect(url_for("login"))
 
         hashed_pw = generate_password_hash(
             request.form.get("password"),
             method="pbkdf2:sha256",
             salt_length=8
         )
-
         new_user = User(
             email=request.form.get('email'),
             password=hashed_pw,
@@ -61,11 +64,21 @@ def login():
     if request.method == "POST":
         email = request.form.get("email")
         password = request.form.get("password")
-        # Validate the user by checking the email in the db and its hashed pw
         user = User.query.filter_by(email=email).first()
+        # User doesn't exist
+        if not user:
+            flash("That email does not exist, please try again")
+            return redirect(url_for("login"))
 
-        if check_password_hash(user.password, password):
+        # Password inccorect
+        elif not check_password_hash(user.password, password):
+            flash("Incorrect password, please try again")
+            return redirect(url_for("login"))
+
+        # Correctly logged in
+        else:
             login_user(user)
+            flash("Successfully logged in")
             return redirect(url_for("secrets"))
 
     return render_template("login.html")
@@ -80,13 +93,13 @@ def secrets():
 
 @app.route('/logout')
 def logout():
-    pass
+    logout_user()
+    return redirect(url_for("home"))
 
 
 @app.route('/download')
 @login_required
 def download():
-
     return send_from_directory('static', path='files/cheat_sheet.pdf')
 
 
