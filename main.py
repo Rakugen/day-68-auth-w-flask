@@ -9,6 +9,9 @@ app.config['SECRET_KEY'] = 'any-secret-key-you-choose'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+
 
 ##CREATE TABLE IN DB
 class User(UserMixin, db.Model):
@@ -20,6 +23,11 @@ class User(UserMixin, db.Model):
 # Line below only required once, when creating DB.
 # with app.app_context():
 #     db.create_all()
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 
 @app.route('/')
@@ -48,16 +56,26 @@ def register():
     return render_template("register.html")
 
 
-@app.route('/login')
+@app.route('/login', methods=["GET", "POST"])
 def login():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+        # Validate the user by checking the email in the db and its hashed pw
+        user = User.query.filter_by(email=email).first()
+
+        if check_password_hash(user.password, password):
+            login_user(user)
+            return redirect(url_for("secrets"))
+
     return render_template("login.html")
 
 
 @app.route('/secrets')
+@login_required
 def secrets():
-    user_id = request.args.get("user_id")
-    name = User.query.get(user_id).name
-    return render_template("secrets.html", name=name)
+    print(current_user.name)
+    return render_template("secrets.html", name=current_user.name)
 
 
 @app.route('/logout')
@@ -66,8 +84,9 @@ def logout():
 
 
 @app.route('/download')
+@login_required
 def download():
-    name = 'cheat_sheet.pdf'
+
     return send_from_directory('static', path='files/cheat_sheet.pdf')
 
 
