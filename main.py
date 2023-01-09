@@ -32,7 +32,7 @@ def load_user(user_id):
 
 @app.route('/')
 def home():
-    return render_template("index.html")
+    return render_template("index.html", logged_in=current_user.is_authenticated)
 
 
 @app.route('/register', methods=["GET", "POST"])
@@ -56,7 +56,7 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         return redirect(url_for("secrets", user_id=new_user.id))
-    return render_template("register.html")
+    return render_template("register.html", logged_in=current_user.is_authenticated)
 
 
 @app.route('/login', methods=["GET", "POST"])
@@ -81,14 +81,14 @@ def login():
             flash("Successfully logged in")
             return redirect(url_for("secrets"))
 
-    return render_template("login.html")
+    return render_template("login.html", logged_in=current_user.is_authenticated)
 
 
 @app.route('/secrets')
 @login_required
 def secrets():
     print(current_user.name)
-    return render_template("secrets.html", name=current_user.name)
+    return render_template("secrets.html", name=current_user.name, logged_in=True)
 
 
 @app.route('/logout')
